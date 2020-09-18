@@ -59,6 +59,7 @@ uint8_t encoderState = 0;
 uint8_t switchState = 0;
 unsigned long printTimerLastTrigger = 0;
 unsigned long loopTimer = 0;
+unsigned long debounceTimer = 0;
 
 bool debounce(unsigned char* history, bool* state, bool reading) {
   *history = ((*history) << 1) | (unsigned char) reading;
@@ -118,6 +119,7 @@ void setup() {
   switchState = 0;
   Consumer.begin();
   printTimerLastTrigger = millis();
+  debounceTimer = millis();
   loopTimer = millis();
   while(!Serial) { }  // Wait for Serial to start
   Serial.println("Serial ready.");
@@ -196,22 +198,25 @@ void loop() {
   if (!switchState && s) switchPress();
   switchState = s;
 
-  debounce(&switchA0History, &switchA0State, digitalRead(SWITCH_A_0_PIN));
-  debounce(&switchA1History, &switchA1State, digitalRead(SWITCH_A_1_PIN));
-  debounce(&switchA2History, &switchA2State, digitalRead(SWITCH_A_2_PIN));
-  debounce(&switchB0History, &switchB0State, digitalRead(SWITCH_B_0_PIN));
-  debounce(&switchB1History, &switchB1State, digitalRead(SWITCH_B_1_PIN));
-  debounce(&switchB2History, &switchB2State, digitalRead(SWITCH_B_2_PIN));
-  debounce(&switchC0History, &switchC0State, 
-           i2cDigitalRead((unsigned short) SWITCH_C_0_I2C_PIN));
-  debounce(&switchC1History, &switchC1State, 
-           !i2cDigitalRead((unsigned short) SWITCH_C_1_I2C_PIN));
-  debounce(&switchD0History, &switchD0State, 
-           i2cDigitalRead((unsigned short) SWITCH_D_0_I2C_PIN));
-  debounce(&switchD1History, &switchD1State, 
-           i2cDigitalRead((unsigned short) SWITCH_D_1_I2C_PIN));
-  getFlapsState();
-  getLandingGearState();
+  if (millis() > debounceTimer + 25) {
+    debounceTimer = millis();
+    debounce(&switchA0History, &switchA0State, digitalRead(SWITCH_A_0_PIN));
+    debounce(&switchA1History, &switchA1State, digitalRead(SWITCH_A_1_PIN));
+    debounce(&switchA2History, &switchA2State, digitalRead(SWITCH_A_2_PIN));
+    debounce(&switchB0History, &switchB0State, digitalRead(SWITCH_B_0_PIN));
+    debounce(&switchB1History, &switchB1State, digitalRead(SWITCH_B_1_PIN));
+    debounce(&switchB2History, &switchB2State, digitalRead(SWITCH_B_2_PIN));
+    debounce(&switchC0History, &switchC0State, 
+            i2cDigitalRead((unsigned short) SWITCH_C_0_I2C_PIN));
+    debounce(&switchC1History, &switchC1State, 
+            !i2cDigitalRead((unsigned short) SWITCH_C_1_I2C_PIN));
+    debounce(&switchD0History, &switchD0State, 
+            i2cDigitalRead((unsigned short) SWITCH_D_0_I2C_PIN));
+    debounce(&switchD1History, &switchD1State, 
+            i2cDigitalRead((unsigned short) SWITCH_D_1_I2C_PIN));
+    getFlapsState();
+    getLandingGearState();
+  }
 
   if (millis() > printTimerLastTrigger + 1000) {
     printTimerLastTrigger = millis();
@@ -232,5 +237,4 @@ void loop() {
   }
 
   loopTimer = millis();
-  delay(19);
 }
