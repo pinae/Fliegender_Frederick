@@ -13,6 +13,10 @@
 #define SWITCH_C_1_I2C_PIN 3
 #define SWITCH_D_0_I2C_PIN 2
 #define SWITCH_D_1_I2C_PIN 1
+#define FLAPS_I2C_PIN_0 9
+#define FLAPS_I2C_PIN_1 10
+#define FLAPS_I2C_PIN_2 8
+#define FLAPS_I2C_PIN_3 11
 #define ENCODER_A_PIN 18
 #define ENCODER_B_PIN 17
 #define ENCODER_SWITCH_PIN 16
@@ -45,6 +49,8 @@ unsigned char switchD0History = 0;
 bool switchD0State = false;
 unsigned char switchD1History = 0;
 bool switchD1State = false;
+unsigned char flapsHistory[4] = {0, 0, 0, 0};
+unsigned int flapsState = 0;
 uint8_t encoderState = 0;
 uint8_t switchState = 0;
 unsigned long printTimerLastTrigger = 0;
@@ -57,6 +63,25 @@ bool debounce(unsigned char* history, bool* state, bool reading) {
     case 0b11111111: *state = true; return true;
     default: return *state;
   }
+}
+
+unsigned int getFlapsState() {
+  bool state0 = (flapsState == 0);
+  debounce(&flapsHistory[0], &state0, i2cDigitalRead((unsigned short) FLAPS_I2C_PIN_0));
+  bool state1 = (flapsState == 1);
+  debounce(&flapsHistory[1], &state1, i2cDigitalRead((unsigned short) FLAPS_I2C_PIN_1));
+  bool state2 = (flapsState == 2);
+  debounce(&flapsHistory[2], &state2, i2cDigitalRead((unsigned short) FLAPS_I2C_PIN_2));
+  bool state3 = (flapsState == 3);
+  debounce(&flapsHistory[3], &state3, i2cDigitalRead((unsigned short) FLAPS_I2C_PIN_3));
+  unsigned char state = (state0 << 3) | (state1 << 1) | (state2 << 2) | state3;
+  switch (state) {
+    case 0b00001000: flapsState = 0; break;
+    case 0b00000100: flapsState = 1; break;
+    case 0b00000010: flapsState = 2; break;
+    case 0b00000001: flapsState = 3; break;
+  }
+  return flapsState;
 }
 
 void setup() {
@@ -166,6 +191,7 @@ void loop() {
            i2cDigitalRead((unsigned short) SWITCH_D_0_I2C_PIN));
   debounce(&switchD1History, &switchD1State, 
            i2cDigitalRead((unsigned short) SWITCH_D_1_I2C_PIN));
+  getFlapsState();
 
   if (millis() > printTimerLastTrigger + 1000) {
     printTimerLastTrigger = millis();
@@ -180,6 +206,7 @@ void loop() {
     Serial.print(" C1: "); Serial.println(switchC1State);
     Serial.print("Switch D0: "); Serial.print(switchD0State);
     Serial.print(" D1: "); Serial.println(switchD1State);
+    Serial.print("Flaps state: "); Serial.println(flapsState);
 
     Serial.print("MCP: "); 
     printBinary(i2cDigitalRead(true)); Serial.print(" ");
