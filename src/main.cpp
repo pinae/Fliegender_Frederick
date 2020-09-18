@@ -17,6 +17,8 @@
 #define FLAPS_I2C_PIN_1 10
 #define FLAPS_I2C_PIN_2 8
 #define FLAPS_I2C_PIN_3 11
+#define LANDING_GEAR_I2C_PIN_0 12
+#define LANDING_GEAR_I2C_PIN_1 13
 #define ENCODER_A_PIN 18
 #define ENCODER_B_PIN 17
 #define ENCODER_SWITCH_PIN 16
@@ -51,6 +53,8 @@ unsigned char switchD1History = 0;
 bool switchD1State = false;
 unsigned char flapsHistory[4] = {0, 0, 0, 0};
 unsigned int flapsState = 0;
+unsigned char landingGearHistory[2] = {0, 0};
+bool landingGearState = false;
 uint8_t encoderState = 0;
 uint8_t switchState = 0;
 unsigned long printTimerLastTrigger = 0;
@@ -82,6 +86,21 @@ unsigned int getFlapsState() {
     case 0b00000001: flapsState = 3; break;
   }
   return flapsState;
+}
+
+bool getLandingGearState() {
+  bool state0 = landingGearState;
+  bool state1 = !landingGearState;
+  debounce(&landingGearHistory[0], &state0, 
+           i2cDigitalRead((unsigned short) LANDING_GEAR_I2C_PIN_0));
+  debounce(&landingGearHistory[1], &state1, 
+           i2cDigitalRead((unsigned short) LANDING_GEAR_I2C_PIN_1));
+  unsigned char state = (state0 << 1) | state1;
+  switch (state) {
+    case 0b00000010: landingGearState = false; break;
+    case 0b00000001: landingGearState = true; break;
+  }
+  return landingGearState;
 }
 
 void setup() {
@@ -192,6 +211,7 @@ void loop() {
   debounce(&switchD1History, &switchD1State, 
            i2cDigitalRead((unsigned short) SWITCH_D_1_I2C_PIN));
   getFlapsState();
+  getLandingGearState();
 
   if (millis() > printTimerLastTrigger + 1000) {
     printTimerLastTrigger = millis();
@@ -207,6 +227,7 @@ void loop() {
     Serial.print("Switch D0: "); Serial.print(switchD0State);
     Serial.print(" D1: "); Serial.println(switchD1State);
     Serial.print("Flaps state: "); Serial.println(flapsState);
+    Serial.print("Landing gear state: "); Serial.println(landingGearState);
 
     Serial.print("MCP: "); 
     printBinary(i2cDigitalRead(true)); Serial.print(" ");
@@ -214,5 +235,5 @@ void loop() {
   }
 
   loopTimer = millis();
-  delay(23);
+  delay(20);
 }
