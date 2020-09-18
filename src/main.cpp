@@ -19,9 +19,9 @@
 #define FLAPS_I2C_PIN_3 11
 #define LANDING_GEAR_I2C_PIN_0 12
 #define LANDING_GEAR_I2C_PIN_1 13
-#define ENCODER_A_PIN 18
-#define ENCODER_B_PIN 17
-#define ENCODER_SWITCH_PIN 16
+#define ENCODER_A_PIN A1
+#define ENCODER_B_PIN A0
+#define ENCODER_SWITCH_PIN A2
 #define STATE_LOCKED 0
 #define STATE_TURN_RIGHT_START 1
 #define STATE_TURN_RIGHT_MIDDLE 2
@@ -216,6 +216,7 @@ void loop() {
   if (millis() > printTimerLastTrigger + 1000) {
     printTimerLastTrigger = millis();
     Serial.print("Loop time: "); Serial.println(millis() - loopTimer);
+    Serial.print(a); Serial.print(" "); Serial.print(b); Serial.print(" "); Serial.println(s);
     Serial.print("Switch A0: "); Serial.print(switchA0State);
     Serial.print(" A1: "); Serial.print(switchA1State);
     Serial.print(" A2: "); Serial.println(switchA2State);
@@ -228,12 +229,8 @@ void loop() {
     Serial.print(" D1: "); Serial.println(switchD1State);
     Serial.print("Flaps state: "); Serial.println(flapsState);
     Serial.print("Landing gear state: "); Serial.println(landingGearState);
-
-    Serial.print("MCP: "); 
-    printBinary(i2cDigitalRead(true)); Serial.print(" ");
-    printBinary(i2cDigitalRead(false)); Serial.println(".");
   }
 
   loopTimer = millis();
-  delay(20);
+  delay(19);
 }
