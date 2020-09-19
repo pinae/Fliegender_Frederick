@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include <HID-Project.h>
 #include "i2cMCP.h"
+#include "keypresses.h"
 
 #define SWITCH_A_0_PIN 9
 #define SWITCH_A_1_PIN 4
@@ -67,6 +68,14 @@ bool debounce(unsigned char* history, bool* state, bool reading) {
     case 0b00000000: *state = false; return false;
     case 0b11111111: *state = true; return true;
     default: return *state;
+  }
+}
+
+void detectSwitchToggle(unsigned char* history, bool* state, bool reading, 
+                        void (*callback)(bool state)) {
+  bool oldState = *state;
+  if (oldState != debounce(history, state, reading)) {
+    callback(*state);
   }
 }
 
@@ -136,21 +145,6 @@ void setup() {
   i2cScanDevices();
 }
 
-void stepRight() {
-  Serial.println(" -->");
-  //Consumer.write(MEDIA_VOL_UP);
-}
-
-void stepLeft() {
-  Serial.println("<-- ");
-  //Consumer.write(MEDIA_VOL_DOWN);
-}
-
-void switchPress() {
-  Serial.println("- SWITCH -");
-  //Consumer.write(MEDIA_VOL_MUTE);
-}
-
 void loop() {
   uint8_t a = digitalRead(ENCODER_A_PIN);
   uint8_t b = digitalRead(ENCODER_B_PIN);
@@ -173,7 +167,7 @@ void loop() {
       if (a && b)       { encoderState = STATE_TURN_RIGHT_MIDDLE; }
       else if (!a && b) { encoderState = STATE_TURN_RIGHT_END; }
       else if (a && !b) { encoderState = STATE_TURN_RIGHT_START; }
-      else              { encoderState = STATE_LOCKED; stepRight(); }; 
+      else              { encoderState = STATE_LOCKED; trimWheelStepRight(); }; 
       break;
     case STATE_TURN_LEFT_START: 
       if (a && b)       { encoderState = STATE_TURN_LEFT_MIDDLE; }
@@ -186,7 +180,7 @@ void loop() {
       if (a && b)       { encoderState = STATE_TURN_LEFT_MIDDLE; }
       else if (!a && b) { encoderState = STATE_TURN_LEFT_START; }
       else if (a && !b) { encoderState = STATE_TURN_LEFT_END; }
-      else              { encoderState = STATE_LOCKED; stepLeft(); }; 
+      else              { encoderState = STATE_LOCKED; trimWheelStepLeft(); }; 
       break;
     case STATE_UNDECIDED:
       if (a && b)       { encoderState = STATE_UNDECIDED; }
@@ -195,25 +189,35 @@ void loop() {
       else              { encoderState = STATE_LOCKED; }; 
       break;
   }
-  if (!switchState && s) switchPress();
+  if (!switchState && s) trimWheelSwitchPress();
   switchState = s;
 
   if (millis() > debounceTimer + 25) {
     debounceTimer = millis();
-    debounce(&switchA0History, &switchA0State, digitalRead(SWITCH_A_0_PIN));
-    debounce(&switchA1History, &switchA1State, digitalRead(SWITCH_A_1_PIN));
-    debounce(&switchA2History, &switchA2State, digitalRead(SWITCH_A_2_PIN));
-    debounce(&switchB0History, &switchB0State, digitalRead(SWITCH_B_0_PIN));
-    debounce(&switchB1History, &switchB1State, digitalRead(SWITCH_B_1_PIN));
-    debounce(&switchB2History, &switchB2State, digitalRead(SWITCH_B_2_PIN));
-    debounce(&switchC0History, &switchC0State, 
-            i2cDigitalRead((unsigned short) SWITCH_C_0_I2C_PIN));
-    debounce(&switchC1History, &switchC1State, 
-            !i2cDigitalRead((unsigned short) SWITCH_C_1_I2C_PIN));
-    debounce(&switchD0History, &switchD0State, 
-            i2cDigitalRead((unsigned short) SWITCH_D_0_I2C_PIN));
-    debounce(&switchD1History, &switchD1State, 
-            i2cDigitalRead((unsigned short) SWITCH_D_1_I2C_PIN));
+    detectSwitchToggle(&switchA0History, &switchA0State, 
+                       digitalRead(SWITCH_A_0_PIN), switchA0);
+    detectSwitchToggle(&switchA1History, &switchA1State, 
+                       digitalRead(SWITCH_A_1_PIN), switchA1);
+    detectSwitchToggle(&switchA2History, &switchA2State, 
+                       digitalRead(SWITCH_A_2_PIN), switchA2);
+    detectSwitchToggle(&switchB0History, &switchB0State, 
+                       digitalRead(SWITCH_B_0_PIN), switchB0);
+    detectSwitchToggle(&switchB1History, &switchB1State, 
+                       digitalRead(SWITCH_B_1_PIN), switchB1);
+    detectSwitchToggle(&switchB2History, &switchB2State, 
+                       digitalRead(SWITCH_B_2_PIN), switchB2);
+    detectSwitchToggle(&switchC0History, &switchC0State, 
+                       i2cDigitalRead((unsigned short) SWITCH_C_0_I2C_PIN),
+                       switchC0);
+    detectSwitchToggle(&switchC1History, &switchC1State, 
+                       !i2cDigitalRead((unsigned short) SWITCH_C_1_I2C_PIN),
+                       switchC1);
+    detectSwitchToggle(&switchD0History, &switchD0State, 
+                       i2cDigitalRead((unsigned short) SWITCH_D_0_I2C_PIN),
+                       switchD0);
+    detectSwitchToggle(&switchD1History, &switchD1State, 
+                       i2cDigitalRead((unsigned short) SWITCH_D_1_I2C_PIN),
+                       switchD1);
     getFlapsState();
     getLandingGearState();
   }

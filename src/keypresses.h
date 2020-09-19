@@ -1,0 +1,13 @@
+void switchA0(bool state);
+void switchA1(bool state);
+void switchA2(bool state);
+void switchB0(bool state);
+void switchB1(bool state);
+void switchB2(bool state);
+void switchC0(bool state);
+void switchC1(bool state);
+void switchD0(bool state);
+void switchD1(bool state);
+void trimWheelStepRight();
+void trimWheelStepLeft();
+void trimWheelSwitchPress();
