@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <HID-Project.h>
 #include "i2cMCP.h"
 #include "keypresses.h"
 
@@ -98,6 +97,13 @@ unsigned int getFlapsState() {
   return flapsState;
 }
 
+void detectFlapsChange(void (*callback)(unsigned int state)) {
+  unsigned int oldFlapsState = flapsState;
+  if (oldFlapsState != getFlapsState()) {
+    callback(flapsState);
+  }
+}
+
 bool getLandingGearState() {
   bool state0 = landingGearState;
   bool state1 = !landingGearState;
@@ -113,6 +119,13 @@ bool getLandingGearState() {
   return landingGearState;
 }
 
+void detectLandingGearStateChange(void (*callback)(bool state)) {
+  bool oldState = landingGearState;
+  if (oldState != getLandingGearState()) {
+    callback(landingGearState);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   pinMode(SWITCH_A_0_PIN, INPUT);
@@ -126,7 +139,7 @@ void setup() {
   pinMode(ENCODER_SWITCH_PIN, INPUT);
   encoderState = 0;
   switchState = 0;
-  Consumer.begin();
+  keypressInit();
   printTimerLastTrigger = millis();
   debounceTimer = millis();
   loopTimer = millis();
@@ -218,11 +231,11 @@ void loop() {
     detectSwitchToggle(&switchD1History, &switchD1State, 
                        i2cDigitalRead((unsigned short) SWITCH_D_1_I2C_PIN),
                        switchD1);
-    getFlapsState();
-    getLandingGearState();
+    detectFlapsChange(flaps);
+    detectLandingGearStateChange(landingGear);
   }
 
-  if (millis() > printTimerLastTrigger + 1000) {
+  if (millis() > printTimerLastTrigger + 20000) {
     printTimerLastTrigger = millis();
     Serial.print("Loop time: "); Serial.println(millis() - loopTimer);
     Serial.print(a); Serial.print(" "); Serial.print(b); Serial.print(" "); Serial.println(s);

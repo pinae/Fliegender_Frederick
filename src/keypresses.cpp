@@ -1,4 +1,9 @@
 #include <Arduino.h>
+#include <HID-Project.h>
+
+void keypressInit() {
+    Consumer.begin();
+}
 
 void switchA0(bool state) {
     if (state) {
@@ -77,6 +82,22 @@ void switchD1(bool state) {
         Serial.println("D1 ON");
     } else {
         Serial.println("D1 OFF");
+    }
+}
+
+void flaps(unsigned int state) {
+    switch (state) {
+        case 0: Serial.println("Flaps: 0"); break;
+        case 1: Serial.println("Flaps: 1"); break;
+        case 2: Serial.println("Flaps: 2"); break;
+        case 3: Serial.println("Flaps: 3"); break;
+    }
+}
+
+void landingGear(bool state) {
+    switch (state) {
+        case true: Serial.println("Landing Gear OUT"); break;
+        case false: Serial.println("Landing Gear RETRACTED"); break;
     }
 }
 
