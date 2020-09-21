@@ -14,8 +14,8 @@
 #define SWITCH_D_0_I2C_PIN 2
 #define SWITCH_D_1_I2C_PIN 1
 #define FLAPS_I2C_PIN_0 9
-#define FLAPS_I2C_PIN_1 10
-#define FLAPS_I2C_PIN_2 8
+#define FLAPS_I2C_PIN_1 8
+#define FLAPS_I2C_PIN_2 10
 #define FLAPS_I2C_PIN_3 11
 #define LANDING_GEAR_I2C_PIN_0 12
 #define LANDING_GEAR_I2C_PIN_1 13
@@ -60,14 +60,15 @@ uint8_t switchState = 0;
 unsigned long printTimerLastTrigger = 0;
 unsigned long loopTimer = 0;
 unsigned long debounceTimer = 0;
+unsigned long slowDebounceTimer = 0;
 
 bool debounce(unsigned char* history, bool* state, bool reading) {
   *history = ((*history) << 1) | (unsigned char) reading;
   switch (*history) {
-    case 0b00000000: *state = false; return false;
-    case 0b11111111: *state = true; return true;
-    default: return *state;
+    case 0b00000000: *state = false; break;
+    case 0b11111111: *state = true; break; 
   }
+  return *state;
 }
 
 void detectSwitchToggle(unsigned char* history, bool* state, bool reading, 
@@ -87,7 +88,7 @@ unsigned int getFlapsState() {
   debounce(&flapsHistory[2], &state2, i2cDigitalRead((unsigned short) FLAPS_I2C_PIN_2));
   bool state3 = (flapsState == 3);
   debounce(&flapsHistory[3], &state3, i2cDigitalRead((unsigned short) FLAPS_I2C_PIN_3));
-  unsigned char state = (state0 << 3) | (state1 << 1) | (state2 << 2) | state3;
+  unsigned char state = (state0 << 3) | (state1 << 2) | (state2 << 1) | state3;
   switch (state) {
     case 0b00001000: flapsState = 0; break;
     case 0b00000100: flapsState = 1; break;
@@ -105,12 +106,12 @@ void detectFlapsChange(void (*callback)(unsigned int state)) {
 }
 
 bool getLandingGearState() {
-  bool state0 = landingGearState;
-  bool state1 = !landingGearState;
-  debounce(&landingGearHistory[0], &state0, 
-           i2cDigitalRead((unsigned short) LANDING_GEAR_I2C_PIN_0));
-  debounce(&landingGearHistory[1], &state1, 
-           i2cDigitalRead((unsigned short) LANDING_GEAR_I2C_PIN_1));
+  bool state0 = !landingGearState;
+  bool state1 = landingGearState;
+  state0 = debounce(&landingGearHistory[0], &state0, 
+                    i2cDigitalRead((unsigned short) LANDING_GEAR_I2C_PIN_0));
+  state1 = debounce(&landingGearHistory[1], &state1, 
+                    i2cDigitalRead((unsigned short) LANDING_GEAR_I2C_PIN_1));
   unsigned char state = (state0 << 1) | state1;
   switch (state) {
     case 0b00000010: landingGearState = false; break;
@@ -141,6 +142,7 @@ void setup() {
   switchState = 0;
   keypressInit();
   printTimerLastTrigger = millis();
+  slowDebounceTimer = millis();
   debounceTimer = millis();
   loopTimer = millis();
   while(!Serial) { }  // Wait for Serial to start
@@ -231,6 +233,10 @@ void loop() {
     detectSwitchToggle(&switchD1History, &switchD1State, 
                        i2cDigitalRead((unsigned short) SWITCH_D_1_I2C_PIN),
                        switchD1);
+  }
+
+  if (millis() > slowDebounceTimer + 25) {
+    slowDebounceTimer = millis();
     detectFlapsChange(flaps);
     detectLandingGearStateChange(landingGear);
   }
